@@ -1,0 +1,948 @@
+{
+  "name": "CS-AI Main Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst data = body?.data;\nif (!data) return [];\nconst phone = (data.key?.remoteJid || '').replace('@s.whatsapp.net','').replace('@c.us','');\nconst text = data.message?.conversation || data.message?.extendedTextMessage?.text || '';\nconst fromMe = data.key?.fromMe || false;\nif (fromMe || !phone || !text) return [];\nreturn [{ json: { phone, text, instance: body.instance || 'cs-ai-demo 2' } }];"
+      },
+      "id": "node-extract",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.text.trim() }}",
+              "rightValue": "^(/start|/menu)$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-isreset",
+      "name": "Is Reset",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=http://127.0.0.1:5050/session/{{ $('Extract Message').item.json.phone }}",
+        "options": {}
+      },
+      "id": "node-deletesession",
+      "name": "Delete Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://127.0.0.1:5050/session/{{ $('Extract Message').item.json.phone }}",
+        "options": {}
+      },
+      "id": "node-getsession",
+      "name": "Get Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        420
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.business_type }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-isnew",
+      "name": "New or Existing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.10:8080/message/sendText/cs-ai-demo%202",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "changeme123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Extract Message').item.json.phone }}"
+            },
+            {
+              "name": "text",
+              "value": "歡迎！請選擇服務：\n1️⃣ 美容院 (Bella)\n2️⃣ 交易所 (Alex)\n3️⃣ 保險 (Sarah)\n4️⃣ 地產 (Kevin)\n5️⃣ 網購 (Mia)\n\n請回覆數字 1-5\n（隨時發 /start 重新選擇）"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-sendmenu",
+      "name": "Send Menu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/session",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $('Extract Message').item.json.phone }}"
+            },
+            {
+              "name": "business_type",
+              "value": "pending"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-savepending",
+      "name": "Save Pending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.business_type }}",
+              "rightValue": "pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-ispending",
+      "name": "Is Pending",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Extract Message').item.json.text.trim() }}",
+              "rightValue": "^[1-5]$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-selectbiz",
+      "name": "Select Business",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('Extract Message').item.json.text.trim();\nconst map = {'1':'beauty','2':'exchange','3':'insurance','4':'realestate','5':'shop'};\nconst business = map[text] || 'beauty';\nconst phone = $('Extract Message').item.json.phone;\nreturn [{ json: { phone, business_type: business } }];"
+      },
+      "id": "node-setbiz",
+      "name": "Set Business",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/session",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "business_type",
+              "value": "={{ $json.business_type }}"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-savesession",
+      "name": "Save Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1940,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const biz = $('Set Business').item.json.business_type;\nconst phone = $('Set Business').item.json.phone;\nconst greetings = {\n  beauty: '你好！我是 Bella 👋\\n我係 Bella Beauty 嘅客服助理。\\n\\n📍 九龍旺角彌敦道 123 號美麗大廈 3 樓\\n📞 2345-6789\\n🕙 週一至六 10am-8pm｜週日 11am-7pm\\n\\n服務：護膚・修眉・接睫・按摩・美甲\\n\\n請問有咩可以幫到你？',\n  exchange: '你好！我是 Alex 👋\\n我係 CryptoAce Exchange 客服。\\n\\n🌐 24/7 全天候支援\\n📧 support@cryptoace.io\\n\\n可協助：開戶・KYC・交易對・手續費・充提幣\\n\\n請問有咩可以幫到你？',\n  insurance: '你好！我是 Sarah 👋\\n我係 SecureLife Insurance 保險顧問。\\n\\n📞 2888-9999\\n🕙 週一至五 9am-6pm\\n\\n產品：人壽・醫療・汽車・旅遊保險\\n\\n如需報價，請告訴我：年齡、保障類型、預算\\n\\n請問有咩可以幫到你？',\n  realestate: '你好！我是 Kevin 👋\\n我係 PrimeHome Realty 持牌地產代理。\\n\\n📞 3456-7890\\n🕙 週一至日 9am-9pm\\n\\n服務：買樓・賣樓・租樓・放租・物業估價\\n覆蓋：九龍・港島・新界全區\\n\\n請問有咩可以幫到你？',\n  shop: '你好！我是 Mia 👋\\nMiaMart 客服為你服務！🛍️\\n\\n🌐 www.miamart.com.hk\\n📦 滿 $300 免運｜3-5 工作日送達\\n🔄 7 日退換\\n\\n請問有咩可以幫到你？'\n};\nreturn [{ json: { phone, greeting: greetings[biz] || greetings.beauty } }];"
+      },
+      "id": "node-sendwelcome-code",
+      "name": "Welcome Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.10:8080/message/sendText/cs-ai-demo%202",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "changeme123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.greeting }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-sendwelcome",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.10:8080/message/sendText/cs-ai-demo%202",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "changeme123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Extract Message').item.json.phone }}"
+            },
+            {
+              "name": "text",
+              "value": "請回覆數字 1-5 選擇服務 😊\n（發 /start 可重新選擇）"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-invalidreply",
+      "name": "Invalid Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1720,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let biz = 'beauty';\nlet phone = '';\ntry {\n  const s = $('Set Business').item.json;\n  biz = s.business_type;\n  phone = s.phone;\n} catch(e) {\n  try {\n    const s = $('Get Session').item.json;\n    biz = s.business_type || 'beauty';\n    phone = $('Extract Message').item.json.phone;\n  } catch(e2) {\n    phone = $('Extract Message').item.json.phone;\n  }\n}\n\n// Internal key remap (DB stores old keys, prompts use new keys)\nconst bizKeyMap = { exchange: 'crypto', realestate: 'property', shop: 'ecommerce' };\nconst bizKey = bizKeyMap[biz] || biz;\n\nconst info = {\n  beauty: `\n- 品牌：Bella Beauty (KL Bukit Bintang / PJ 分店)\n- 皇牌療程：\n  1. 韓式納米深層清潔 (RM280)：針對黑頭粉刺，無痛針清。\n  2. 激光祛斑美白 (RM580)：採用最新皮秒技術，針對暗沈。\n  3. 睛靈眼部護理 (RM380)：減淡黑眼圈、消浮腫。\n- 產品：自研保濕精華 (RM150)，醫學級面膜 (RM80/盒)。\n- 痛點解決：敏感肌建議\"草本修復\"；油性肌建議\"水油平衡\"。\n- 預約：需提前1天預約，保留15分鐘。`,\n\n  crypto: `\n- 品牌：ABC Exchange (頂級加密貨幣交易平台)\n- 核心產品：\n  1. 現貨交易 (Spot)：支持 BTC, ETH, SOL 等 500+ 幣種，手續費 0.1%。\n  2. 合約交易 (Futures)：最高 125 倍槓桿，支持全倉/逐倉模式，防爆倉機制。\n  3. 跟單交易 (Copy Trade)：一鍵跟隨明星交易員，適合無時間看盤的新手。\n  4. 理財寶 (Earn)：穩定幣 USDT 定期申購，保本型年化收益 5%-12%。\n- 安全：100% 準備金證明 (Proof of Reserves)，冷熱錢包隔離。\n- 出入金與 KYC 限制：KYC L1 每日提幣額度 50k USD，L2 2M USD。支持 P2P 馬幣 (MYR) 交易。`,\n\n  insurance: `\n- 品牌：SecureLife Insurance (KL & Selangor 專業代理)\n- 核心險種：\n  1. Medical Ace (醫療卡)：RM1M 每年保額，無終身限額。30歲月費約 RM220。涵蓋 Sunway Medical, Gleneagles 等雪隆區私人醫院。Direct Billing 免墊付。\n  2. Income Guard (危疾險)：涵蓋 36 種重大疾病（如癌症、中風）。確診即賠現金，用於還房貸/生活費。\n  3. Hibah / Term Life：專為家庭支柱設計，身故或全殘賠付。RM500k 保額月費低至 RM80。\n  4. Education Fund：2歲開始，每月存 RM300，18歲預計可領 RM80k 大學經費。`,\n\n  property: `\n- 品牌：PrimeHome Realty (KL & Selangor 房產專家)\n- 熱門板塊與行情：\n  1. Mont Kiara / Bangsar：高端自住與外籍租客區。公寓 RM800k 起，租金回報穩。\n  2. Petaling Jaya (PJ) / Damansara：成熟華人社區，自住首選，二手排屋 RM900k 起。生活機能極佳。\n  3. KLCC / Tun Razak Exchange (TRX)：適合高淨值投資收租，商務客多。\n- 服務內容：免費物業估價、貸款預先審核 (Pre-loan check)、律師對接。\n- 佣金：買賣成交價 1% (賣家付)，租房半個月租金 (屋主付)。`,\n\n  ecommerce: `\n- 品牌：MiaMart 網購平台 (Base in KL)\n- 熱賣品類：\n  1. 美妝護膚：韓國直送面膜、護膚套裝。\n  2. 智能家居：小米系列、空氣清新機。\n  3. 潮流服飾：歐美品牌代購。\n- 物流：雪隆區 (Klang Valley) 享 Next-day delivery (隔日達)。運費 RM8，滿 RM150 免運。\n- 售後：7日無理由退換（不影響二次銷售情況下）。`\n};\n\nconst prompts = {\n  beauty:\n`You are Bella, a Senior Beauty Consultant in KL/PJ.\nPersonality: Sweet, caring, observant, uses terms like 美女, 寶貝, 其實.\nCompany info: ${info.beauty}\n\nCRITICAL RULES (YOU MUST OBEY):\n- 步驟 1: 膚況診斷 (DIAGNOSE BEFORE QUOTING)。\n- 步驟 2: 服務審查。\n  👉 IF (客戶一上來就直接問「有什麼配套」、「多少錢」，但沒有說明自己的膚況或痛點):\n      你【絕對禁止】直接列出價格表！\n      你必須溫柔地拒絕直接報價。請用貼心的語氣引導並反問客戶的膚質（如偏乾、出油）和想解決的痛點。請根據對話自然發揮，不要像機器人一樣每次都問一模一樣的問題。\n      並且標註 [INTENT:FAQ]。\n  👉 ELSE IF (你已經知道客戶的 [膚質] 和 [痛點]):\n      你必須根據 info 精準推薦 1 到 2 個最對症下藥的療程，並給出價格。\n      如果客戶想預約，加上: [INTENT:APPOINTMENT]\n      並標註 [INTENT:FAQ]`,\n\n  crypto:\n`You are Alex, a VIP Account Manager at ABC Exchange.\nPersonality: Sharp, tech-savvy, uses crypto terms cleanly.\nCompany info: ${info.crypto}\n\nCRITICAL RULES (YOU MUST OBEY):\n- 步驟 1: 需求分類。判斷客戶是新手還是老手，是想自己交易 (Trade) 還是放著生息 (Earn)。\n- 步驟 2: 合規審查 (COMPLIANCE CHECK - 絕對紅線)。\n  👉 IF (客戶要求具體的投資建議，例如「買哪個幣好」、「會漲還是跌」) 或者 (試圖強迫你預測價格):\n      你【絕對禁止】給出任何幣種推薦或價格預測！\n      你必須堅定且禮貌地拒絕。請自行組織語言，重申平台嚴禁提供投資建議 (NFA) 的底線，提醒客戶做好研究 (DYOR)，並自然地推薦理財寶或跟單功能。不要每次都念同一句拒絕台詞。\n      並且標註 [INTENT:FAQ]。\n  👉 ELSE IF (客戶詢問平台功能、手續費、出入金):\n      根據 info 提供精準資訊。\n      並且標註 [INTENT:FAQ]`,\n\n  insurance:\n`You are Sarah, a Senior Financial Advisor at SecureLife Insurance — NOT a chatbot.\nPersonality: Empathetic, logical, deeply knowledgeable about the KL/Selangor market.\nCompany info: ${info.insurance}\n\nEXPERT RULES (CRITICAL):\n- DIAGNOSE BEFORE QUOTING: Never just give a quote. Ask about their concerns (e.g., hospital bills vs. paying mortgage if sick).\n- EXPLAIN THE DIFFERENCE: If they worry about illness, clearly explain that Medical Card pays the hospital (Gleneagles/Sunway), while Critical Illness pays cash to THEM.\n- DO NOT DO MATH: Never calculate complex cash values or returns. Use the estimates in your info.\n\nQUOTE GENERATION RULES (CRITICAL LOGIC):\n- 步驟 1: 檢查資訊。你必須收集齊 [年齡]、[險種]、[預算] 才能報價。\n- 步驟 2: 預算審查 (BUDGET CHECK)。\n  👉 IF (預算 < RM220) 或者 (預算不足以同時購買多個險種):\n      你【絕對禁止】生成報價單！\n      你必須回覆：「老闆，坦白說以您目前的預算，是買不到完整的 Medical Card + 儲蓄的。作為家庭支柱，強烈建議您先放棄小孩的教育基金，先把大人的醫療卡 (約RM220) 搞定。您覺得呢？」\n      並且只能標註 [INTENT:FAQ]。\n  👉 ELSE IF (預算 >= RM220) 且合理:\n      你才能生成報價。\n      並在結尾加上: [QUOTE:{\"age\":NUMBER,\"coverage_type\":\"TYPE\",\"premium_estimate\":NUMBER,\"unit\":\"/mo\"}][INTENT:QUOTE]\n- 嚴禁捏造數據！如果不知道具體數字，請根據 info 裡的基準線估算，絕不能出現「總費用低於單個險種」的數學錯誤。\n- If not generating quote, append: [INTENT:FAQ] [INTENT:APPOINTMENT] or [INTENT:OTHER].`,\n\n  property:\n`You are Kevin, a Senior Real Estate Negotiator in KL & Selangor.\nPersonality: Professional, direct, uses Malaysian Chinese slang (e.g., 老闆, 來看房, loan 批).\nCompany info: ${info.property}\n\nCRITICAL RULES (YOU MUST OBEY):\n- 步驟 1: 診斷需求。在推薦房子前，你必須知道客戶的 [預算] 和 [目的] (自住還是投資)。\n- 步驟 2: 常識與預算審查 (LOGIC & BUDGET CHECK)。\n  👉 IF (客戶預算極度不合理，例如 RM10,000 想買 KLCC) 或者 (要求不合法的操作，例如不找銀行貸款，要求直接分期付款給仲介):\n      你【絕對禁止】配合客戶的幻想！\n      你必須用專業且幽默的語氣戳破他們不切實際的期待。請根據客戶的具體荒謬要求自行發揮，點出預算太低或必須過銀行的現實，但不要每次都像機器人一樣背誦同一句話。\n      並且標註 [INTENT:FAQ]。\n  👉 ELSE IF (預算合理 且 目的明確):\n      你才能根據 info 裡的資料進行推薦。\n      如果客戶要求看房，加上: [INTENT:APPOINTMENT]\n      如果只是普通問答，加上: [INTENT:FAQ]`,\n\n  ecommerce:\n`You are Mia, a Customer Service Rep for MiaMart (based in KL).\nPersonality: Energetic, helpful, efficient.\nCompany info: ${info.ecommerce}\n\nCRITICAL RULES (YOU MUST OBEY):\n- 步驟 1: 識別意圖。\n- 步驟 2: 業務範圍與數學審查 (SCOPE & MATH CHECK)。\n  👉 IF (客戶問了與網購無關的荒謬問題，例如：要求寫程式碼、寫作文、解數學題):\n      你【絕對禁止】回答這些無關問題。\n      請幽默且禮貌地把話題拉回網購業務，告訴客戶你只是 MiaMart 客服，不處理這些事。發揮你的創意來拒絕，不要每次都用同一個句式。\n  👉 IF (客戶詢問運費):\n      【絕對禁止算錯數學！】你必須在腦海裡仔細相加購物總額。\n      只有總額 >= RM150 才能免運費。如果小於 RM150，明確告知需要加 RM8 的運費。\n  👉 ELSE:\n      正常回答物流、退換貨或商品問題。\n      並且標註 [INTENT:FAQ]`\n};\n\nconst userText = $('Extract Message').item.json.text;\nreturn [{ json: { phone, business: biz, systemPrompt: prompts[bizKey] || prompts.beauty, userText } }];"
+      },
+      "id": "node-loadprompt",
+      "name": "Load Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://127.0.0.1:5050/conversations/{{ $json.phone }}?limit=10",
+        "options": {}
+      },
+      "id": "node-gethistory",
+      "name": "Get History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        780
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loadData = $('Load Prompt').item.json;\nconst historyRaw = $input.first().json;\n\nconst history = historyRaw?.history || [];\n\nconst messages = [\n  { role: 'system', content: loadData.systemPrompt }\n];\n\nfor (const h of history) {\n  if (h.role && h.content) {\n    messages.push({ role: h.role, content: h.content });\n  }\n}\n\nmessages.push({ role: 'user', content: loadData.userText });\n\nreturn [{ json: {\n  messages,\n  phone: loadData.phone,\n  business: loadData.business,\n  userText: loadData.userText\n}}];"
+      },
+      "id": "node-buildmsg",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.3, messages: $json.messages }) }}",
+        "options": {
+          "timeout": 60000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GROQ_API_KEY"
+            }
+          ]
+        }
+      },
+      "id": "node-qwen",
+      "name": "Groq AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1940,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResp = $input.first().json;\nconst content = aiResp.choices?.[0]?.message?.content || '';\nconst phone = $('Build Messages').item.json.phone;\nconst business = $('Build Messages').item.json.business;\nconst userText = $('Build Messages').item.json.userText;\n\nconst intentMatch = content.match(/\\[INTENT:([A-Z_]+)\\]/);\nconst intent = intentMatch ? intentMatch[1] : 'OTHER';\n\nconst quoteMatch = content.match(/\\[QUOTE:({[\\s\\S]*?})\\]/);\nlet quoteData = {};\nif (quoteMatch) {\n  try { quoteData = JSON.parse(quoteMatch[1]); } catch(e) {}\n}\n\nconst replyText = content\n  .replace(/\\[QUOTE:{[\\s\\S]*?}\\]/g, '')\n  .replace(/\\[INTENT:[A-Z_]+\\]/g, '')\n  .trim();\n\nreturn [{ json: { phone, business, intent, replyText, quoteData, userText } }];"
+      },
+      "id": "node-parseai",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/conversations",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "role",
+              "value": "user"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.userText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-saveuser",
+      "name": "Save User Msg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2380,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/conversations",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $('Parse AI Response').item.json.phone }}"
+            },
+            {
+              "name": "role",
+              "value": "assistant"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Parse AI Response').item.json.replyText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-saveai",
+      "name": "Save AI Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2380,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.10:8080/message/sendText/cs-ai-demo%202",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "changeme123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Parse AI Response').item.json.phone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Parse AI Response').item.json.replyText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-sendreply",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse AI Response').item.json.intent }}",
+              "rightValue": "QUOTE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-isquote",
+      "name": "Is Quote",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2820,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/quotation",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ business_type: $('Parse AI Response').item.json.business, phone: $('Parse AI Response').item.json.phone, quote_data: $('Parse AI Response').item.json.quoteData, lang: 'zh-hk' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-genquote",
+      "name": "Generate Quote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3040,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.0.10:8080/message/sendMedia/cs-ai-demo%202",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "changeme123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Parse AI Response').item.json.phone, mediatype: 'document', mimetype: 'application/pdf', media: $json.base64, fileName: $json.filename, caption: '📄 你的報價單已生成，請查收！' }) }}",
+        "options": {}
+      },
+      "id": "node-senddoc",
+      "name": "Send Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3260,
+        700
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Is Reset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reset": {
+      "main": [
+        [
+          {
+            "node": "Delete Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Session": {
+      "main": [
+        [
+          {
+            "node": "Send Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session": {
+      "main": [
+        [
+          {
+            "node": "New or Existing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "New or Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New or Existing": {
+      "main": [
+        [
+          {
+            "node": "Send Menu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Menu": {
+      "main": [
+        [
+          {
+            "node": "Save Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Pending": {
+      "main": [
+        [
+          {
+            "node": "Select Business",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Business": {
+      "main": [
+        [
+          {
+            "node": "Set Business",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Business": {
+      "main": [
+        [
+          {
+            "node": "Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Session": {
+      "main": [
+        [
+          {
+            "node": "Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Welcome Message": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Prompt": {
+      "main": [
+        [
+          {
+            "node": "Get History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get History": {
+      "main": [
+        [
+          {
+            "node": "Build Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Messages": {
+      "main": [
+        [
+          {
+            "node": "Groq AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen AI": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Save User Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save User Msg": {
+      "main": [
+        [
+          {
+            "node": "Save AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply": {
+      "main": [
+        [
+          {
+            "node": "Is Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Quote": {
+      "main": [
+        [
+          {
+            "node": "Generate Quote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Generate Quote": {
+      "main": [
+        [
+          {
+            "node": "Send Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

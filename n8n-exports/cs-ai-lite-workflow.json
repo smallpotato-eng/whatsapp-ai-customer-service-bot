@@ -1,0 +1,742 @@
+{
+  "name": "CS-AI Lite",
+  "nodes": [
+    {
+      "id": "univ-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cs-lite",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-extract",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst phone = body?.phone || '';\nconst text  = body?.text  || '';\nconst name  = body?.name  || phone;\nif (!phone || !text) return [];\nreturn [{ json: { phone, text, name } }];"
+      }
+    },
+    {
+      "id": "univ-is-reset",
+      "name": "Is Reset",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.text.trim() }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-delete-session",
+      "name": "Delete Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        160
+      ],
+      "parameters": {
+        "method": "DELETE",
+        "url": "=http://127.0.0.1:5050/session/{{ $('Extract Message').item.json.phone }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-send-reset",
+      "name": "Send Reset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/send",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone: $('Extract Message').item.json.phone, text: '對話已重置，請重新開始 😊' }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-respond-reset",
+      "name": "Respond Reset OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-load-sop",
+      "name": "Load SOP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:5050/sop?path=${N8N_FILES_DIR}/SOP.txt",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-parse-sop",
+      "name": "Parse SOP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nif (!resp.ok) throw new Error('Failed to load SOP: ' + resp.error);\nconst sop = resp.sop;\nreturn [{ json: sop }];"
+      }
+    },
+    {
+      "id": "univ-get-session",
+      "name": "Get Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://127.0.0.1:5050/session/{{ $('Extract Message').item.json.phone }}",
+        "options": {
+          "response": {
+            "response": {
+              "alwaysOutputData": true
+            }
+          }
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "univ-new-existing",
+      "name": "New or Existing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 404,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-save-session",
+      "name": "Save Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/session",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone_number: $('Extract Message').item.json.phone, business_type: 'universal', status: 'active' }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-send-welcome",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/send",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone: $('Extract Message').item.json.phone, text: $('Parse SOP').item.json.welcome_message || 'Hi! How can I help you today?' }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-respond-welcome",
+      "name": "Respond Welcome OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-get-history",
+      "name": "Get History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://127.0.0.1:5050/conversations/{{ $('Extract Message').item.json.phone }}?limit=10",
+        "options": {
+          "response": {
+            "response": {
+              "alwaysOutputData": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "univ-build-messages",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const sop = $('Parse SOP').item.json;\nconst roleName    = sop.role_name      || 'Assistant';\nconst companyName = sop.company_name   || 'Our Company';\nconst tone        = sop.tone           || 'Professional and friendly';\nconst sopContent  = sop.sop_content    || 'Provide helpful customer service.';\n\nconst phone    = $('Extract Message').item.json.phone;\nconst userText = $('Extract Message').item.json.text;\nconst history  = $('Get History').item.json?.history || [];\n\nconst systemPrompt = `You are ${roleName}, a human customer service representative for ${companyName}.\nYour personality and tone: ${tone}.\n\nHere is your STRICT SOP:\n<SOP>\n${sopContent}\n</SOP>\n\nABSOLUTE RULES — NEVER BREAK THESE:\n1. You are a HUMAN staff member. NEVER say you are an AI, chatbot, or virtual assistant.\n2. NEVER say \"I cannot send PDF\", \"technical limitation\", \"I'm just a text-based assistant\", or anything similar. These phrases are COMPLETELY FORBIDDEN.\n3. When you generate a [QUOTE:...][INTENT:QUOTE] tag, our system automatically sends a professional PDF to the customer. You do NOT need to explain this. Just say something warm like \"I've prepared your quotation! You'll receive it shortly. 😊\"\n4. Only answer based on the SOP above.\n5. If customer asks for discounts or unavailable services, refuse politely with variety.\n6. Reply in the SAME language the customer uses.\n7. When you have enough info for a quote, write a warm closing sentence FIRST, then append EXACTLY:\n[QUOTE:{json_data}][INTENT:QUOTE]\n8. Otherwise append ONE tag: [INTENT:FAQ] or [INTENT:APPOINTMENT] or [INTENT:OTHER]`;\n\nconst messages = [{ role: 'system', content: systemPrompt }];\nfor (const h of history) {\n  messages.push({ role: h.role, content: h.content });\n}\nmessages.push({ role: 'user', content: userText });\n\nreturn [{ json: { phone, messages, userText } }];"
+      }
+    },
+    {
+      "id": "univ-groq",
+      "name": "Groq AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GROQ_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature: 0.3, messages: $json.messages }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "univ-parse-ai",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const aiResp  = $input.first().json;\nconst content  = aiResp.choices?.[0]?.message?.content || '';\nconst phone    = $('Build Messages').item.json.phone;\nconst userText = $('Build Messages').item.json.userText;\n\n// Extract INTENT\nconst intentMatch = content.match(/\\[INTENT:([A-Z_]+)\\]/);\nconst intent = intentMatch ? intentMatch[1] : 'OTHER';\n\n// Extract QUOTE JSON - find from [QUOTE: to ][INTENT:\nlet quoteData = {};\nconst quoteStart = content.indexOf('[QUOTE:');\nconst intentIdx  = content.indexOf('][INTENT:');\nif (quoteStart !== -1 && intentIdx !== -1) {\n  const jsonStr = content.substring(quoteStart + 7, intentIdx);\n  try { quoteData = JSON.parse(jsonStr); } catch(e) {}\n}\n\n// Clean reply text - remove everything from [QUOTE: onward\nlet replyText = quoteStart !== -1 ? content.substring(0, quoteStart) : content;\nreplyText = replyText.replace(/\\[INTENT:[A-Z_]+\\]/g, '').trim();\n\n// Fallback if reply is empty (AI only sent the QUOTE tag)\nif (!replyText && intent === 'QUOTE') {\n  replyText = '📄 Your personalised quotation is ready! Please check the PDF below.';\n}\nif (!replyText) {\n  replyText = 'Thank you for your message!';\n}\n\nreturn [{ json: { phone, intent, replyText, quoteData, userText } }];"
+      }
+    },
+    {
+      "id": "univ-save-user",
+      "name": "Save User Msg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2660,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/conversations",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone_number: $('Parse AI Response').item.json.phone, role: 'user', content: $('Parse AI Response').item.json.userText }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-save-ai",
+      "name": "Save AI Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/conversations",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone_number: $('Parse AI Response').item.json.phone, role: 'assistant', content: $('Parse AI Response').item.json.replyText }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-send-reply",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3100,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/send",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone: $('Parse AI Response').item.json.phone, text: $('Parse AI Response').item.json.replyText }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-is-quote",
+      "name": "Is Quote",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3320,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse AI Response').item.json.intent }}",
+              "rightValue": "QUOTE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-gen-quote",
+      "name": "Generate Quote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3540,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5050/quotation",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ business_type: $('Parse SOP').item.json.business_type || 'shop', phone: $('Parse AI Response').item.json.phone, quote_data: $('Parse AI Response').item.json.quoteData, lang: $('Parse SOP').item.json.lang || 'zh-hk' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "univ-send-doc",
+      "name": "Send Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3760,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/send-document",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ phone: $('Parse AI Response').item.json.phone, base64: $json.base64, filename: $json.filename }) }}",
+        "options": {},
+        "rawContentType": "application/json"
+      }
+    },
+    {
+      "id": "univ-respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3540,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "univ-respond-quote-ok",
+      "name": "Respond Quote OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3980,
+        160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":true}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Is Reset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reset": {
+      "main": [
+        [
+          {
+            "node": "Delete Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Session": {
+      "main": [
+        [
+          {
+            "node": "Send Reset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reset": {
+      "main": [
+        [
+          {
+            "node": "Respond Reset OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load SOP": {
+      "main": [
+        [
+          {
+            "node": "Parse SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SOP": {
+      "main": [
+        [
+          {
+            "node": "Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session": {
+      "main": [
+        [
+          {
+            "node": "New or Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New or Existing": {
+      "main": [
+        [
+          {
+            "node": "Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Session": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome": {
+      "main": [
+        [
+          {
+            "node": "Respond Welcome OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get History": {
+      "main": [
+        [
+          {
+            "node": "Build Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Messages": {
+      "main": [
+        [
+          {
+            "node": "Groq AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq AI": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Save User Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save User Msg": {
+      "main": [
+        [
+          {
+            "node": "Save AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply": {
+      "main": [
+        [
+          {
+            "node": "Is Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Quote": {
+      "main": [
+        [
+          {
+            "node": "Generate Quote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Quote": {
+      "main": [
+        [
+          {
+            "node": "Send Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Document": {
+      "main": [
+        [
+          {
+            "node": "Respond Quote OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+  h1 { color: #1565c0; border-bottom: 2px solid #1565c0; padding-bottom: 10px; }
+  .info { margin: 20px 0; font-size: 14px; }
+  .plan-box { background: #f0f6ff; border: 1px solid #c5d8f6; border-radius: 8px; padding: 20px; margin: 20px 0; }
+  .plan-box h3 { color: #1565c0; margin-top: 0; }
+  .price { font-size: 1.8em; font-weight: bold; color: #1565c0; margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  td:first-child { font-weight: bold; width: 45%; color: #555; }
+  .disclaimer { margin-top: 30px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+</style>
+</head>
+<body>
+  <h1>🛡️ SafeGuard Insurance — 初步保費估算</h1>
+  <div class="info">
+    <p><strong>客戶：</strong>{{customer_name}} &nbsp;|&nbsp; <strong>年齡：</strong>{{age}} &nbsp;|&nbsp; <strong>日期：</strong>{{date}}</p>
+  </div>
+  <div class="plan-box">
+    <h3>保障方案：{{plan_name}}</h3>
+    <table>
+      <tr><td>保障範圍</td><td>{{coverage}}</td></tr>
+      <tr><td>保障金額</td><td>RM {{sum_assured}}</td></tr>
+      <tr><td>保障期限</td><td>{{duration}}</td></tr>
+    </table>
+    <p class="price">年繳保費：RM {{annual_premium}}</p>
+    <p style="color:#555">月繳：RM {{monthly_premium}} &nbsp;|&nbsp; 季繳：RM {{quarterly_premium}}</p>
+  </div>
+  <div class="disclaimer">
+    ⚠️ 此為初步估算，實際保費以核保結果為準。本文件不構成保單合約。<br>
+    SafeGuard Insurance | 持牌保險公司 | 受 Bank Negara Malaysia 監管
+  </div>
+</body>
+</html>

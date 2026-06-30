@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+  h1 { color: #e91e8c; border-bottom: 2px solid #e91e8c; padding-bottom: 10px; }
+  .info { margin: 20px 0; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th { background: #e91e8c; color: white; padding: 12px; text-align: left; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) { background: #fdf0f8; }
+  .total-row td { font-weight: bold; font-size: 1.1em; background: #fce4f4; }
+  .footer { margin-top: 40px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+</style>
+</head>
+<body>
+  <h1>💄 Bella Beauty Salon — 服務報價單</h1>
+  <div class="info">
+    <p><strong>客戶：</strong>{{customer_name}}</p>
+    <p><strong>日期：</strong>{{date}}</p>
+    <p><strong>有效期：</strong>7 天</p>
+  </div>
+  <table>
+    <tr><th>服務項目</th><th>說明</th><th>價格 (RM)</th></tr>
+    {{rows}}
+    <tr class="total-row"><td colspan="2">總計</td><td>RM {{total}}</td></tr>
+  </table>
+  <div class="footer">
+    📍 Bella Beauty Salon | 📞 +60 12-345 6789 | 此報價單有效期為 7 天。如有查詢，請聯絡我們。
+  </div>
+</body>
+</html>
