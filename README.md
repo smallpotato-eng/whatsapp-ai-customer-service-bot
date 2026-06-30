@@ -1,29 +1,64 @@
-# WhatsApp AI Customer Service Automation Bot
+## What I Built
 
-An end-to-end WhatsApp AI customer service automation system that connects WhatsApp, n8n, Flask, SQLite, Groq LLM, SOP-grounded prompts, and automated PDF quotation generation.
+- WhatsApp message bridge using Baileys and Express.js
+- n8n workflow for message routing, session handling, and LLM orchestration
+- Flask API for sessions, conversations, appointments, orders, SOP loading, and quotations
+- SQLite database for persistent conversation memory and user sessions
+- SOP-grounded prompt workflow for business-specific customer service
+- Intent detection for FAQ, appointment, quotation, and general support
+- PDF quotation generator for multiple business verticals
+- Automated WhatsApp document delivery
+- Sanitized GitHub-ready structure with `.env.example` and secret separation
 
-This project demonstrates how LLMs can be integrated into real customer service workflows instead of remaining as standalone chat interfaces.
+## Key Features
 
-## Demo Flow
+- Multi-business support: beauty, insurance, real estate, and online shop
+- Conversation history and session persistence
+- Business SOP loading for grounded responses
+- Structured intent tags for downstream automation
+- Personalized PDF quotation generation
+- WhatsApp text reply and document sending
+- Reset/session handling flow
+- Docker Compose support for Evolution API, Postgres, and Redis
 
-1. Customer sends a message on WhatsApp.
-2. Baileys WhatsApp bridge forwards the message to an n8n webhook.
-3. n8n loads the customer session, conversation history, and business SOP.
-4. Groq LLM generates a response based on the SOP and conversation context.
-5. The workflow detects customer intent such as FAQ, appointment, or quotation.
-6. For quotation requests, Flask generates a personalized PDF quotation.
-7. The WhatsApp bridge sends the reply and PDF back to the customer. 
+## Tech Stack
 
-## Architecture
+- Python
+- Flask
+- SQLite
+- JavaScript / Node.js
+- Express.js
+- Baileys WhatsApp API
+- n8n
+- Groq LLM API
+- FPDF
+- Docker Compose
 
-```mermaid
-flowchart LR
-    A[WhatsApp Customer] --> B[Baileys WhatsApp Bridge]
-    B --> C[n8n Webhook Workflow]
-    C --> D[Flask API]
-    D --> E[SQLite Database]
-    C --> F[Groq LLM]
-    F --> C
-    C --> G[PDF Quotation Generator]
-    G --> B
-    B --> H[Customer Receives Reply or PDF]
+## Why This Project Matters
+
+Many chatbot demos only generate text replies. This project connects an LLM to a real customer service workflow: it remembers users, follows business SOPs, detects intent, generates business documents, and sends outputs back through WhatsApp.
+
+It shows practical LLM application development for customer service, operations automation, and business workflow integration.
+
+## Example Use Cases
+
+- Beauty salon treatment enquiries and quotation generation
+- Insurance plan enquiries and estimated premium quotation
+- Real estate enquiry handling and commission estimate
+- Online shop customer support and order quotation
+
+## Security Notice
+
+This repository is a sanitized portfolio version.
+
+The following are intentionally excluded:
+
+- Real API keys
+- WhatsApp sessions
+- Customer databases
+- Chat logs
+- Generated quotation PDFs
+- Uploaded files
+- Payment or private business data
+
+Use `.env.example` to configure your own local credentials.
