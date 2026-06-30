@@ -12,7 +12,7 @@ This project demonstrates how LLMs can be integrated into real customer service 
 4. Groq LLM generates a response based on the SOP and conversation context.
 5. The workflow detects customer intent such as FAQ, appointment, or quotation.
 6. For quotation requests, Flask generates a personalized PDF quotation.
-7. The WhatsApp bridge sends the reply and PDF back to the customer.
+7. The WhatsApp bridge sends the reply and PDF back to the customer. 
 
 ## Architecture
 
